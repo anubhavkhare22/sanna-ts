@@ -10,6 +10,8 @@ import type { KeyObject } from "node:crypto";
 
 import { canonicalize, hashObj } from "./hashing.js";
 import { sign, verify, getKeyId } from "./crypto.js";
+import { readFileSync } from "node:fs";
+import { safeWriteJson } from "./safe-io.js";
 import type {
   ApprovalRequest,
   ApprovalSignature,
@@ -255,19 +257,12 @@ export class ApprovalStore {
 
   private _persist(): void {
     if (!this._persistPath) return;
-    const { writeFileSync } = require("node:fs") as typeof import("node:fs");
-    const data = JSON.stringify(
-      Array.from(this._requests.values()),
-      null,
-      2,
-    );
-    writeFileSync(this._persistPath, data, "utf-8");
+    safeWriteJson(this._persistPath, Array.from(this._requests.values()));
   }
 
   private _load(): void {
     if (!this._persistPath) return;
     try {
-      const { readFileSync } = require("node:fs") as typeof import("node:fs");
       const raw = readFileSync(this._persistPath, "utf-8");
       const arr = JSON.parse(raw) as ApprovalRequest[];
       for (const req of arr) {

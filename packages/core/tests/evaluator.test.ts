@@ -226,6 +226,84 @@ describe("evaluateAuthority — unknown/default", () => {
   });
 });
 
+describe("evaluateAuthority — exact match security", () => {
+  it("'user' in can_execute does NOT match 'delete_user'", () => {
+    const ab: AuthorityBoundaries = {
+      cannot_execute: [],
+      must_escalate: [],
+      can_execute: ["user"],
+      default_escalation: "log",
+    };
+    const c = makeConstitution(ab);
+    const result = evaluateAuthority("delete_user", {}, c);
+    // Should NOT match — "user" is not a glob, must be exact
+    expect(result.boundary_type).toBe("uncategorized");
+  });
+
+  it("'credential_access' in cannot_execute does NOT match bare 'access'", () => {
+    const ab: AuthorityBoundaries = {
+      cannot_execute: ["credential_access"],
+      must_escalate: [],
+      can_execute: [],
+      default_escalation: "log",
+    };
+    const c = makeConstitution(ab);
+    const result = evaluateAuthority("access", {}, c);
+    // Should NOT match — exact match only
+    expect(result.decision).toBe("allow");
+  });
+
+  it("glob 'read_*' matches 'read_file' but not 'write_file'", () => {
+    const ab: AuthorityBoundaries = {
+      cannot_execute: [],
+      must_escalate: [],
+      can_execute: ["read_*"],
+      default_escalation: "log",
+    };
+    const c = makeConstitution(ab);
+    expect(evaluateAuthority("read_file", {}, c).boundary_type).toBe("can_execute");
+    expect(evaluateAuthority("write_file", {}, c).boundary_type).toBe("uncategorized");
+  });
+
+  it("glob '*_delete' matches 'user_delete' but not 'delete_user'", () => {
+    const ab: AuthorityBoundaries = {
+      cannot_execute: ["*_delete"],
+      must_escalate: [],
+      can_execute: [],
+      default_escalation: "log",
+    };
+    const c = makeConstitution(ab);
+    expect(evaluateAuthority("user_delete", {}, c).decision).toBe("halt");
+    expect(evaluateAuthority("delete_user", {}, c).decision).toBe("allow");
+  });
+
+  it("exact 'search' matches 'search' but not 'search_all' or 'deep_search'", () => {
+    const ab: AuthorityBoundaries = {
+      cannot_execute: [],
+      must_escalate: [],
+      can_execute: ["search"],
+      default_escalation: "log",
+    };
+    const c = makeConstitution(ab);
+    expect(evaluateAuthority("search", {}, c).boundary_type).toBe("can_execute");
+    expect(evaluateAuthority("search_all", {}, c).boundary_type).toBe("uncategorized");
+    expect(evaluateAuthority("deep_search", {}, c).boundary_type).toBe("uncategorized");
+  });
+
+  it("separator normalization: read_file === readFile === read.file", () => {
+    const ab: AuthorityBoundaries = {
+      cannot_execute: [],
+      must_escalate: [],
+      can_execute: ["read_file"],
+      default_escalation: "log",
+    };
+    const c = makeConstitution(ab);
+    expect(evaluateAuthority("read_file", {}, c).boundary_type).toBe("can_execute");
+    expect(evaluateAuthority("readFile", {}, c).boundary_type).toBe("can_execute");
+    expect(evaluateAuthority("read.file", {}, c).boundary_type).toBe("can_execute");
+  });
+});
+
 describe("evaluateAuthority — full-featured constitution fixture", () => {
   const c = loadConstitution(resolve(FIXTURES, "constitutions/full-featured.yaml"));
 

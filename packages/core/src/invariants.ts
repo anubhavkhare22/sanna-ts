@@ -157,11 +157,11 @@ export function runInvariantCheck(
   if (!invariant.type) {
     return {
       ...base,
-      passed: true,
-      severity: "info",
-      evidence: null,
+      passed: false,
+      severity: mapEnforcementToSeverity(invariant.enforcement),
+      evidence: "Unrecognized invariant type: cannot evaluate rule",
       details: invariant.rule,
-      status: "NOT_CHECKED",
+      status: "UNKNOWN_TYPE",
     };
   }
 
@@ -179,11 +179,11 @@ export function runInvariantCheck(
     default:
       return {
         ...base,
-        passed: true,
-        severity: "info",
-        evidence: null,
+        passed: false,
+        severity: mapEnforcementToSeverity(invariant.enforcement),
+        evidence: "Unrecognized invariant type: cannot evaluate rule",
         details: `Unknown invariant type: ${invariant.type}`,
-        status: "NOT_CHECKED",
+        status: "UNKNOWN_TYPE",
       };
   }
 }
@@ -211,9 +211,9 @@ function runRegexMatch(
     return { ...base, passed: true, severity: "info", evidence: null, details: "No pattern specified", status: "NOT_CHECKED" } as CheckResult;
   }
 
-  // Reject known-catastrophic patterns (fail-open for backwards compat)
+  // Reject known-catastrophic patterns (fail-closed)
   if (!isSafeRegex(inv.pattern)) {
-    return { ...base, passed: true, severity: "info", evidence: `Pattern rejected by safe-regex2: /${inv.pattern}/`, details: `Unsafe regex pattern rejected: /${inv.pattern}/`, status: "UNSAFE_PATTERN" } as CheckResult;
+    return { ...base, passed: false, severity: mapEnforcementToSeverity(inv.enforcement), evidence: `Unsafe regex pattern rejected (potential ReDoS): /${inv.pattern}/`, details: "Invariant failed due to unsafe regex pattern", status: "UNSAFE_PATTERN" } as CheckResult;
   }
 
   try {
@@ -227,7 +227,7 @@ function runRegexMatch(
       details: matches ? "Output matches required pattern" : `Pattern /${inv.pattern}/ not found in output`,
     } as CheckResult;
   } catch {
-    return { ...base, passed: true, severity: "info", evidence: null, details: `Invalid regex pattern: ${inv.pattern}`, status: "ERRORED" } as CheckResult;
+    return { ...base, passed: false, severity: mapEnforcementToSeverity(inv.enforcement), evidence: `Invalid regex pattern rejected: /${inv.pattern}/`, details: `Invalid regex pattern: ${inv.pattern}`, status: "ERRORED" } as CheckResult;
   }
 }
 
@@ -240,9 +240,9 @@ function runRegexDeny(
     return { ...base, passed: true, severity: "info", evidence: null, details: "No pattern specified", status: "NOT_CHECKED" } as CheckResult;
   }
 
-  // Reject known-catastrophic patterns (fail-open for backwards compat)
+  // Reject known-catastrophic patterns (fail-closed)
   if (!isSafeRegex(inv.pattern)) {
-    return { ...base, passed: true, severity: "info", evidence: `Pattern rejected by safe-regex2: /${inv.pattern}/`, details: `Unsafe regex pattern rejected: /${inv.pattern}/`, status: "UNSAFE_PATTERN" } as CheckResult;
+    return { ...base, passed: false, severity: mapEnforcementToSeverity(inv.enforcement), evidence: `Unsafe regex pattern rejected (potential ReDoS): /${inv.pattern}/`, details: "Invariant failed due to unsafe regex pattern", status: "UNSAFE_PATTERN" } as CheckResult;
   }
 
   try {
@@ -256,7 +256,7 @@ function runRegexDeny(
       details: matches ? `Forbidden pattern /${inv.pattern}/ found in output` : "Output does not contain forbidden pattern",
     } as CheckResult;
   } catch {
-    return { ...base, passed: true, severity: "info", evidence: null, details: `Invalid regex pattern: ${inv.pattern}`, status: "ERRORED" } as CheckResult;
+    return { ...base, passed: false, severity: mapEnforcementToSeverity(inv.enforcement), evidence: `Invalid regex pattern rejected: /${inv.pattern}/`, details: `Invalid regex pattern: ${inv.pattern}`, status: "ERRORED" } as CheckResult;
   }
 }
 

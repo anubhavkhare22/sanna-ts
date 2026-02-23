@@ -19,7 +19,7 @@ import {
   fsyncSync,
   closeSync,
 } from "node:fs";
-import { resolve, dirname, join, relative } from "node:path";
+import { resolve, dirname, join, relative, sep, parse as parsePath } from "node:path";
 import { tmpdir } from "node:os";
 import { randomBytes } from "node:crypto";
 import yaml from "js-yaml";
@@ -69,9 +69,10 @@ export function validatePath(path: string, baseDir: string): PathValidationResul
  */
 export function isSymlink(path: string): boolean {
   const resolved = resolve(path);
-  const parts = resolved.split("/").filter(Boolean);
+  const { root } = parsePath(resolved);
+  const parts = resolved.slice(root.length).split(sep).filter(Boolean);
 
-  let current = "/";
+  let current = root;
   for (const part of parts) {
     current = join(current, part);
     try {

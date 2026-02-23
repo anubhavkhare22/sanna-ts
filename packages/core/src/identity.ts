@@ -137,7 +137,7 @@ export class IdentityRegistry {
    */
   register(claim: IdentityClaim, publicKey: KeyObject): boolean {
     const result = verifyIdentityClaim(claim, publicKey);
-    if (!result.signature_valid) return false;
+    if (!result.signature_valid || result.expired) return false;
 
     this._claims.set(claim.id, structuredClone(claim));
 

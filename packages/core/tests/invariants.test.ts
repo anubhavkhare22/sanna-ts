@@ -263,9 +263,9 @@ describe("runInvariantCheck", () => {
         type: "regex_match", pattern: "(a+)+",
       };
       const result = runInvariantCheck(inv, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaab");
-      expect(result.passed).toBe(true); // fail-open
+      expect(result.passed).toBe(false); // fail-closed
       expect(result.status).toBe("UNSAFE_PATTERN");
-      expect(result.evidence).toContain("safe-regex2");
+      expect(result.evidence).toContain("ReDoS");
     });
 
     it("should reject a ReDoS pattern in regex_deny", () => {
@@ -274,7 +274,7 @@ describe("runInvariantCheck", () => {
         type: "regex_deny", pattern: "(a+)+",
       };
       const result = runInvariantCheck(inv, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaab");
-      expect(result.passed).toBe(true); // fail-open
+      expect(result.passed).toBe(false); // fail-closed
       expect(result.status).toBe("UNSAFE_PATTERN");
     });
 
@@ -289,23 +289,49 @@ describe("runInvariantCheck", () => {
     });
   });
 
-  describe("unknown type", () => {
-    it("should return NOT_CHECKED for unknown invariant type", () => {
+  describe("unknown type (fail-closed)", () => {
+    it("should return UNKNOWN_TYPE and passed=false for unknown invariant type", () => {
       const inv: InvariantDefinition = {
         id: "INV_CUSTOM", rule: "Custom rule", enforcement: "warn",
         type: "custom_type",
       };
       const result = runInvariantCheck(inv, "test output");
-      expect(result.status).toBe("NOT_CHECKED");
-      expect(result.passed).toBe(true);
+      expect(result.status).toBe("UNKNOWN_TYPE");
+      expect(result.passed).toBe(false);
+      expect(result.evidence).toContain("cannot evaluate");
     });
 
-    it("should return NOT_CHECKED when no type detected", () => {
+    it("should return UNKNOWN_TYPE and passed=false when no type detected", () => {
       const inv: InvariantDefinition = {
         id: "INV_CUSTOM", rule: "Custom rule", enforcement: "warn",
       };
       const result = runInvariantCheck(inv, "test output");
-      expect(result.status).toBe("NOT_CHECKED");
+      expect(result.status).toBe("UNKNOWN_TYPE");
+      expect(result.passed).toBe(false);
+    });
+  });
+
+  describe("invalid regex (fail-closed)", () => {
+    it("should return passed=false for invalid regex_match pattern", () => {
+      const inv: InvariantDefinition = {
+        id: "INV_BAD", rule: "Must match pattern", enforcement: "warn",
+        type: "regex_match", pattern: "[invalid",
+      };
+      const result = runInvariantCheck(inv, "test");
+      expect(result.passed).toBe(false);
+      // safe-regex2 catches malformed patterns as UNSAFE_PATTERN before RegExp constructor
+      expect(result.status).toBe("UNSAFE_PATTERN");
+    });
+
+    it("should return passed=false for invalid regex_deny pattern", () => {
+      const inv: InvariantDefinition = {
+        id: "INV_BAD_DENY", rule: "Deny pattern", enforcement: "halt",
+        type: "regex_deny", pattern: "[invalid",
+      };
+      const result = runInvariantCheck(inv, "test");
+      expect(result.passed).toBe(false);
+      // safe-regex2 catches malformed patterns as UNSAFE_PATTERN before RegExp constructor
+      expect(result.status).toBe("UNSAFE_PATTERN");
     });
   });
 });
@@ -324,7 +350,8 @@ describe("runAllInvariantChecks", () => {
     expect(results[1].check_id).toBe("INV_LEN");
     expect(results[1].passed).toBe(true);
     expect(results[2].check_id).toBe("INV_CUSTOM");
-    expect(results[2].status).toBe("NOT_CHECKED");
+    expect(results[2].status).toBe("UNKNOWN_TYPE");
+    expect(results[2].passed).toBe(false);
   });
 
   it("should return empty array for constitution with no invariants", () => {

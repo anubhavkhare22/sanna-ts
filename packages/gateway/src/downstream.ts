@@ -53,13 +53,23 @@ export class DownstreamConnection {
   async connect(): Promise<void> {
     if (this._connected) return;
 
-    // Build environment: inherit process env + overlay downstream env
+    // Build environment: allowlist of essential runtime vars + downstream env.
+    // Secrets needed by specific downstreams must be explicitly configured
+    // in downstream.env config — never leak gateway-level secrets.
+    const ENV_ALLOWLIST = new Set([
+      "PATH", "HOME", "TMPDIR", "TEMP", "TMP",
+      "USER", "LOGNAME", "SHELL", "LANG", "LC_ALL",
+      "NODE_ENV", "NODE_OPTIONS",
+      "TERM", "COLORTERM",
+    ]);
+    const baseEnv: Record<string, string> = {};
+    for (const key of ENV_ALLOWLIST) {
+      if (process.env[key] !== undefined) {
+        baseEnv[key] = process.env[key]!;
+      }
+    }
     const env: Record<string, string> = {
-      ...Object.fromEntries(
-        Object.entries(process.env).filter(
-          (entry): entry is [string, string] => entry[1] !== undefined,
-        ),
-      ),
+      ...baseEnv,
       ...(this._config.env ?? {}),
     };
 

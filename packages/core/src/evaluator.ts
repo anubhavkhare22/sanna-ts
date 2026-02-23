@@ -64,24 +64,40 @@ export function normalizeAuthorityName(name: string): string {
 // ── Matching helpers ─────────────────────────────────────────────────
 
 /**
- * Bidirectional substring match with separator normalization.
- * Returns true if pattern is a substring of action or vice versa.
- * Empty/whitespace names return false.
+ * Exact match with opt-in glob patterns.
+ *
+ * If pattern contains "*", treat as a glob (shell-style wildcard):
+ *   "read_*" matches "read_file" but not "write_file"
+ *   "*_delete" matches "user_delete" but not "delete_user"
+ *   "*" matches everything
+ *
+ * Otherwise, exact match after normalization.
+ * Separatorless fallback uses exact match too:
+ *   readFile === read_file === read.file
+ *   but readFile !== readFileSystem
  */
 function matchesAction(pattern: string, action: string): boolean {
   if (!action || !action.trim()) return false;
   if (!pattern || !pattern.trim()) return false;
 
-  const p = normalizeSeparators(pattern.normalize("NFKC").trim()).toLowerCase();
-  const a = normalizeSeparators(action.normalize("NFKC").trim()).toLowerCase();
+  const p = normalizeAuthorityName(pattern);
+  const a = normalizeAuthorityName(action);
 
-  if (p.includes(a) || a.includes(p)) return true;
+  if (p.includes("*")) {
+    // Glob matching: escape regex special chars except *, then * → .*
+    const escaped = p.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+    const regexStr = "^" + escaped.replace(/\*/g, ".*") + "$";
+    return new RegExp(regexStr).test(a);
+  }
 
-  // Separatorless fallback
+  // Exact match
+  if (p === a) return true;
+
+  // Separatorless fallback: exact comparison
   const pStripped = p.replace(/[^a-z0-9]/g, "");
   const aStripped = a.replace(/[^a-z0-9]/g, "");
   if (pStripped && aStripped) {
-    return pStripped.includes(aStripped) || aStripped.includes(pStripped);
+    return pStripped === aStripped;
   }
 
   return false;

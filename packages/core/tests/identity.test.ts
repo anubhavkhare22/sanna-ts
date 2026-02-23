@@ -250,6 +250,21 @@ describe("IdentityRegistry", () => {
     expect(registry.lookup("nonexistent")).toHaveLength(0);
   });
 
+  it("should reject expired claims", () => {
+    const registry = new IdentityRegistry();
+    const kp = generateKeypair();
+    const claim = createIdentityClaim(
+      "agent_identity",
+      kp.keyId,
+      { name: "expired-agent" },
+      kp.privateKey,
+      { expires_in_hours: -1 }, // Already expired
+    );
+    // Signature is valid but claim is expired — should be rejected
+    expect(registry.register(claim, kp.publicKey)).toBe(false);
+    expect(registry.size).toBe(0);
+  });
+
   it("should register multiple claims for same key", () => {
     const registry = new IdentityRegistry();
     const kp = generateKeypair();

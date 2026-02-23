@@ -15,6 +15,7 @@ import crypto, { type KeyObject } from "node:crypto";
 
 import {
   loadConstitution,
+  verifyConstitutionSignature,
   evaluateAuthority,
   generateReceipt,
   signReceipt,
@@ -117,6 +118,25 @@ export class SannaGateway {
         this._config.constitution.public_key_path,
       );
     }
+
+    // 2b. Verify constitution signature
+    if (this._publicKey) {
+      const sigValid = verifyConstitutionSignature(
+        this._constitution,
+        this._publicKey,
+      );
+      if (!sigValid) {
+        if (this._config.enforcement.mode === "enforced") {
+          throw new Error(
+            "Constitution signature verification failed (enforced mode requires valid signature)",
+          );
+        }
+        process.stderr.write(
+          "[sanna-gateway] WARNING: Constitution signature verification failed\n",
+        );
+      }
+    }
+    // If no public key configured, skip signature verification (opt-in feature)
 
     // 3. Receipt store
     if (this._config.receipts?.store_path) {

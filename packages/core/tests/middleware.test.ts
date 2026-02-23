@@ -232,6 +232,7 @@ describe("authority evaluation", () => {
 
   it("should pass with allowed tool", () => {
     const constitution = makeConstitution({
+      invariants: [],
       authority_boundaries: {
         cannot_execute: ["delete_database"],
         must_escalate: [],
