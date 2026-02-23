@@ -1,36 +1,631 @@
-# sanna-ts
+# Sanna — Trust Infrastructure for AI Agents
 
-TypeScript SDK for the [Sanna Protocol](https://github.com/sanna-ai/sanna-protocol) — AI governance with constitution enforcement and cryptographic receipts.
+Sanna checks reasoning during execution, halts when constraints are violated, and generates portable cryptographic receipts proving governance was enforced. Constitution-as-code: your governance rules live in version-controlled YAML, not in a vendor dashboard.
 
-Implements **Sanna Protocol v1.0**.
+This is the **TypeScript implementation** of [Sanna Protocol v1.0](https://github.com/sanna-ai/sanna-protocol). For the Python reference implementation, see [sanna-ai/sanna](https://github.com/sanna-ai/sanna).
 
-## Packages
-
-| Package | npm |
-|---------|-----|
-| [`@sanna/core`](packages/core/) | [![npm](https://img.shields.io/npm/v/@sanna/core)](https://www.npmjs.com/package/@sanna/core) |
-
-## Install
+## Quick Start — Library Mode
 
 ```bash
 npm install @sanna/core
 ```
 
-Requires Node.js 22+ (native Ed25519, zero external crypto dependencies).
+Set up governance (one-time):
 
-## Highlights
+```bash
+sanna init         # Choose template, set agent name, enforcement level
+sanna keygen       # Generate Ed25519 keypair (~/.sanna/keys/)
+# Output:
+#   Generated Ed25519 keypair (a1b2c3d4e5f6...)
+#   Private key: /Users/you/.sanna/keys/a1b2c3d4e5f6...7890.key
+#   Public key:  /Users/you/.sanna/keys/a1b2c3d4e5f6...7890.pub
+sanna sign constitution.yaml --private-key ~/.sanna/keys/<key-id>.key
+```
 
-- 141 tests across 7 test suites
-- Cross-language receipt portability with the [Python SDK](https://github.com/sanna-ai/sanna)
-- Ed25519 signing/verification via Node.js native crypto
-- RFC 8785 JSON Canonicalization Scheme
-- Golden fixture verification against the [protocol spec](https://github.com/sanna-ai/sanna-protocol)
+Now wrap the functions you want to govern. `sannaObserve` wraps the functions you choose — internal reasoning, prompt construction, and non-governed function calls produce no receipts.
 
-## Related
+```typescript
+import { sannaObserve, SannaHaltError } from "@sanna/core";
+import type { SannaResult } from "@sanna/core";
 
-- [sanna-ai/sanna-protocol](https://github.com/sanna-ai/sanna-protocol) — Protocol specification, schemas, and test fixtures
-- [sanna-ai/sanna](https://github.com/sanna-ai/sanna) — Python reference implementation
+const myAgent = sannaObserve(
+  (query: string, context: string): string => {
+    return "Based on the data, revenue grew 12% year-over-year.";
+  },
+  {
+    constitutionPath: "constitution.yaml",
+    constitutionPublicKeyPath: "~/.sanna/keys/<key-id>.pub",  // from sanna keygen above
+  },
+);
+
+// sannaObserve wraps the return value in a SannaResult with .output and .receipt.
+// The original string return is available as result.output.
+try {
+  const result: SannaResult<string> = myAgent(
+    "What was revenue growth?",
+    "Annual report: revenue increased 12% YoY to $4.2B.",
+  );
+  console.log(result.output);   // The original string return value
+  console.log(result.receipt);  // Cryptographic governance receipt
+  // To persist receipts, use ReceiptStore separately:
+  //   import { ReceiptStore } from "@sanna/core";
+  //   const store = new ReceiptStore(".sanna/receipts.db");
+  //   store.save(result.receipt);
+} catch (e) {
+  if (e instanceof SannaHaltError) {
+    console.error(`HALTED: ${e.message}`);  // Constitution violation detected
+  }
+}
+```
+
+## Quick Start — Gateway Mode
+
+No code changes to your agent. The gateway sits between your MCP client and downstream servers.
+
+```bash
+npm install @sanna/gateway
+
+sanna init         # Creates constitution.yaml + gateway.yaml
+sanna keygen --label gateway
+sanna sign constitution.yaml --private-key ~/.sanna/keys/<key-id>.key
+sanna gateway gateway.yaml
+```
+
+Minimum `gateway.yaml`:
+
+```yaml
+gateway:
+  constitution:
+    path: ./constitution.yaml
+  enforcement:
+    mode: enforced
+    default_policy: deny
+
+downstreams:
+  - name: notion
+    command: npx
+    args: ["-y", "@notionhq/notion-mcp-server"]
+    env:
+      OPENAPI_MCP_HEADERS: "${OPENAPI_MCP_HEADERS}"
+```
+
+Point your MCP client (Claude Desktop, Claude Code, Cursor) at the gateway instead of directly at your downstream servers. Every tool call is now governed. The gateway governs tool calls that pass through it — only actions that cross the governance boundary produce receipts. Reasoning is captured via the explicit `_justification` parameter in tool calls, not from internal model reasoning. The gateway cannot observe LLM chain-of-thought.
+
+```
+MCP Client (Claude Desktop / Claude Code / Cursor)
+        |
+        v  (MCP stdio)
+sanna-gateway
+        |  1. Receive tool call
+        |  2. Evaluate against constitution
+        |  3. Enforce policy (allow / escalate / deny)
+        |  4. Generate signed receipt
+        |  5. Forward to downstream (if allowed)
+        v  (MCP stdio)
+Downstream MCP Servers (Notion, GitHub, filesystem, etc.)
+```
+
+## Demo
+
+Run a self-contained governance demo — no external dependencies:
+
+```bash
+sanna demo
+```
+
+This generates keys, creates a constitution, simulates a governed tool call, generates a receipt, and verifies it.
+
+## Core Concepts
+
+**Constitution** — YAML document defining what the agent can, cannot, and must escalate. Ed25519-signed. Modification after signing is detected on load. Constitution signing (via `sanna sign`) is required for enforcement. Constitution approval is an optional additional governance step for multi-party review workflows.
+
+**Receipt** — JSON artifact binding inputs, reasoning, action, and check results into a cryptographically signed, schema-validated, deterministically fingerprinted record. Receipts are generated per governed action — when an agent calls a tool or executes a wrapped function — not per conversational turn. An agent that reasons for twenty turns and executes one action produces one receipt.
+
+**Coherence Checks (C1-C5)** — Five built-in deterministic heuristics. No API calls or external dependencies.
+
+| Check | Invariant | What it catches |
+|-------|-----------|-----------------|
+| C1 | `INV_NO_FABRICATION` | Output contradicts provided context |
+| C2 | `INV_MARK_INFERENCE` | Definitive claims without hedging |
+| C3 | `INV_NO_FALSE_CERTAINTY` | Confidence exceeding evidence strength |
+| C4 | `INV_PRESERVE_TENSION` | Conflicting information collapsed |
+| C5 | `INV_NO_PREMATURE_COMPRESSION` | Complex input reduced to single sentence |
+
+**Authority Boundaries** — `can_execute` (forward), `must_escalate` (prompt user), `cannot_execute` (deny). Policy cascade: per-tool override > server default > constitution.
+
+**Key Management** — Public keys are stored in `~/.sanna/keys/` and referenced by their key ID (SHA-256 fingerprint of the public key). For verification, pass the public key path explicitly via `--public-key` on the CLI or `constitutionPublicKeyPath` in code.
+
+## Receipt Format
+
+Every governed action produces a reasoning receipt — a JSON artifact that cryptographically binds inputs, outputs, check results, and constitution provenance. See the [Sanna Protocol specification](https://github.com/sanna-ai/sanna-protocol) for the full specification.
+
+**Identification**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `spec_version` | string | Schema version, `"1.0"` |
+| `tool_version` | string | Package version, e.g. `"0.1.0"` |
+| `checks_version` | string | Check algorithm version, e.g. `"5"` |
+| `receipt_id` | string | UUID v4 unique identifier |
+| `correlation_id` | string | Path-prefixed identifier for grouping related receipts |
+
+**Integrity**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `receipt_fingerprint` | string | 16-hex SHA-256 truncation for compact display |
+| `full_fingerprint` | string | 64-hex SHA-256 of all fingerprinted fields |
+| `context_hash` | string | 64-hex SHA-256 of canonical inputs |
+| `output_hash` | string | 64-hex SHA-256 of canonical outputs |
+
+**Content**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `timestamp` | string | ISO 8601 timestamp |
+| `inputs` | object | Dictionary of function arguments passed to the wrapped function (e.g., `query`, `context`) |
+| `outputs` | object | Contains `response` |
+
+**Governance**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `checks` | array | List of `CheckResult` objects with `check_id`, `passed`, `severity`, `evidence` |
+| `checks_passed` | integer | Count of checks that passed |
+| `checks_failed` | integer | Count of checks that failed |
+| `status` | string | `"PASS"` / `"WARN"` / `"FAIL"` / `"PARTIAL"` |
+| `constitution_ref` | object | Contains `document_id`, `policy_hash`, `version`, `source`, `signature_verified`, `constitution_approval` |
+| `enforcement` | object or null | Contains `action`, `reason`, `failed_checks`, `enforcement_mode`, `timestamp` when enforcement triggered |
+| `evaluation_coverage` | object | Contains `total_invariants`, `evaluated`, `not_checked`, `coverage_basis_points` |
+
+**Receipt Triad (Gateway)**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `input_hash` | string | 64-hex SHA-256, present in gateway receipts |
+| `reasoning_hash` | string | 64-hex SHA-256 of reasoning content |
+| `action_hash` | string | 64-hex SHA-256 of action content |
+| `assurance` | string | `"full"` or `"partial"` |
+
+**Identity and Signature**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `receipt_signature` | object | Contains `value`, `key_id`, `signed_by`, `signed_at`, `scheme` |
+| `identity_verification` | object or null | Verification results for identity claims, when present |
+
+**Extensions**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `extensions` | object | Reverse-domain namespaced metadata (`com.sanna.gateway`, `com.sanna.middleware`) |
+
+This section provides a high-level overview. For a complete field reference and normative format details, see the [Sanna Protocol specification](https://github.com/sanna-ai/sanna-protocol).
+
+Minimal example receipt (abbreviated — production receipts typically contain 3-7 checks):
+
+```json
+{
+  "spec_version": "1.0",
+  "tool_version": "0.1.0",
+  "checks_version": "5",
+  "receipt_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+  "receipt_fingerprint": "7b4d06e836514eef",
+  "full_fingerprint": "7b4d06e836514eef26ab96f5c62b193d036c92b45d966ef7025d75539ff93aca",
+  "correlation_id": "sanna-my-agent-1708128000",
+  "timestamp": "2026-02-17T00:00:00.000Z",
+  "inputs": {"query": "refund policy", "context": "All sales are final."},
+  "outputs": {"response": "Unfortunately, all sales are final per our policy."},
+  "context_hash": "...(64 hex)...",
+  "output_hash": "...(64 hex)...",
+  "checks": [
+    {"check_id": "C1", "name": "Context Contradiction", "passed": true, "severity": "info"}
+  ],
+  "checks_passed": 1,
+  "checks_failed": 0,
+  "status": "PASS",
+  "constitution_ref": {"document_id": "support-agent/1.0", "policy_hash": "...", "signature_verified": true},
+  "enforcement": null
+}
+```
+
+## Constitution Format
+
+Constitutions are YAML documents that define an agent's governance boundaries. They are version-controlled, cryptographically signed (and optionally approved) before enforcement.
+
+```yaml
+sanna_constitution: "1.1"
+
+identity:
+  agent_name: support-agent
+  domain: customer-support
+  description: Handles refund and billing inquiries
+
+provenance:
+  authored_by: governance-team
+  approved_by: vp-risk
+  approval_date: "2026-01-15"
+
+boundaries:
+  - id: B1
+    description: Only answer questions about products in the catalog
+    category: scope
+    severity: critical
+  - id: B2
+    description: Never promise refunds outside the 30-day window
+    category: policy
+    severity: critical
+
+invariants:
+  - id: INV_NO_FABRICATION
+    rule: Never state facts not grounded in provided context
+    enforcement: critical
+  - id: INV_MARK_INFERENCE
+    rule: Clearly mark any inference or assumption
+    enforcement: warning
+  - id: INV_NO_FALSE_CERTAINTY
+    rule: Do not express certainty beyond what evidence supports
+    enforcement: warning
+  - id: INV_PRESERVE_TENSION
+    rule: When context contains conflicting rules, surface both
+    enforcement: warning
+  - id: INV_NO_PREMATURE_COMPRESSION
+    rule: Do not over-summarize multi-faceted context
+    enforcement: warning
+
+authority_boundaries:
+  can_execute:
+    - Look up order status
+    - Search knowledge base
+  must_escalate:
+    - Issue refund over $500
+    - Override account restrictions
+  cannot_execute:
+    - Delete customer accounts
+    - Access payment credentials
+
+escalation_targets:
+  - condition: "refund over limit"
+    target:
+      type: webhook
+      url: https://ops.example.com/escalate
+
+reasoning:
+  require_justification: true
+  assurance_level: full
+```
+
+## Custom Invariant Checks
+
+Invariants defined in your constitution YAML are automatically detected and enforced. Sanna maps rule text to built-in check types:
+
+| Type | Detected when rule contains | Example |
+|------|---------------------------|---------|
+| `pii_detection` | "PII" | `No PII in output` |
+| `max_length` | "maximum" + number + "characters" | `Maximum 500 characters per response` |
+| `regex_match` | "must match" + `/pattern/` | `Output must match /^\d{4}-\d{2}$/` |
+| `regex_deny` | "must not match" + `/pattern/` | `Must not match /password:\s*.+/` |
+| `required_keywords` | "must contain" + quoted words | `Output must contain 'disclaimer', 'terms'` |
+
+```typescript
+import { loadConstitution, runAllInvariantChecks } from "@sanna/core";
+
+const constitution = loadConstitution("constitution.yaml");
+const output = "Here is the response from the agent.";
+
+const results = runAllInvariantChecks(constitution, output);
+for (const result of results) {
+  console.log(`${result.check_id}: ${result.passed ? "PASS" : "FAIL"}`);
+  if (!result.passed) {
+    console.log(`  Evidence: ${result.evidence}`);
+  }
+}
+```
+
+Invariants with explicit `check` fields (e.g., `check: sanna.context_contradiction`) skip type detection and are handled by the coherence check engine. Unrecognized rules return `NOT_CHECKED` status — they are not silently ignored.
+
+Regex patterns are validated by [safe-regex2](https://github.com/fastify/safe-regex2) before execution. Catastrophic backtracking patterns (e.g., `(a+)+`) are rejected with `UNSAFE_PATTERN` status and fail-open.
+
+## Receipt Querying
+
+```typescript
+import { ReceiptStore, DriftAnalyzer } from "@sanna/core";
+
+const store = new ReceiptStore(".sanna/receipts.db");
+
+// Query with filters
+const receipts = store.query({
+  agent_id: "support-agent",
+  status: "FAIL",
+  limit: 10,
+});
+
+// Drift analysis
+const analyzer = new DriftAnalyzer(store);
+const report = analyzer.analyze(30, { threshold: 0.15 });
+
+store.close();
+```
+
+Or via CLI:
+
+```bash
+sanna drift-report --db .sanna/receipts.db --window 30 --json
+```
+
+## Constitution Templates
+
+`sanna init` offers four templates:
+
+| Template | Use Case |
+|----------|----------|
+| Developer | Advisory enforcement, starter template for development |
+| Production | Strict enforcement, full governance for production agents |
+| Privacy-Focused | PII-aware, data handling boundaries |
+| Minimal | Bare minimum constitution for custom configuration |
+
+## CLI Reference
+
+All commands are available as `sanna <command>`:
+
+| Command | Description |
+|---------|-------------|
+| `sanna init` | Interactive constitution generator with template selection |
+| `sanna keygen` | Generate Ed25519 keypair (`--label` for human-readable name) |
+| `sanna sign` | Sign a constitution with Ed25519 (`--private-key` required) |
+| `sanna verify` | Verify receipt integrity, signature, and provenance chain |
+| `sanna verify-constitution` | Verify constitution signature (`--public-key` required) |
+| `sanna inspect` | Pretty-print receipt contents (`--json` for machine output) |
+| `sanna diff` | Unified diff of two constitution YAML files |
+| `sanna drift-report` | Fleet governance drift report (`--db`, `--window`, `--json`) |
+| `sanna demo` | Run self-contained governance demo |
+| `sanna check-config` | Validate gateway config (dry-run) |
+| `sanna gateway` | Start MCP enforcement proxy |
+| `sanna migrate` | Migrate Claude Desktop / Cursor config to gateway format |
+
+## Packages
+
+| Package | Description |
+|---------|-------------|
+| [`@sanna/core`](packages/core/) | Constitution engine, Ed25519 crypto, receipts, coherence checks, middleware, receipt store, drift analysis, evidence bundles, approval workflows, identity claims |
+| [`@sanna/cli`](packages/cli/) | Command-line tools (12 commands) |
+| [`@sanna/mcp-server`](packages/mcp-server/) | 7 governance tools over MCP stdio transport |
+| [`@sanna/gateway`](packages/gateway/) | MCP enforcement proxy with circuit breakers, escalation, PII redaction, config migration |
+
+## API Reference
+
+The `@sanna/core` package exports the primary API:
+
+```typescript
+import {
+  // Governance wrapper
+  sannaObserve,
+  withSannaGovernance,
+  SannaHaltError,
+
+  // Receipts
+  generateReceipt,
+  signReceipt,
+  verifyReceipt,
+  computeFingerprints,
+
+  // Constitutions
+  loadConstitution,
+  parseConstitution,
+  signConstitution,
+  saveConstitution,
+  verifyConstitutionSignature,
+
+  // Authority
+  evaluateAuthority,
+
+  // Checks
+  runCoherenceChecks,
+  loadInvariantChecks,
+  runAllInvariantChecks,
+
+  // Cryptography
+  generateKeypair,
+  sign,
+  verify,
+  loadPrivateKey,
+  loadPublicKey,
+
+  // Storage and analytics
+  ReceiptStore,
+  DriftAnalyzer,
+
+  // Bundles
+  createBundle,
+  verifyBundle,
+
+  // Approval workflows
+  createApprovalRequest,
+  signApproval,
+  verifyApproval,
+  ApprovalStore,
+
+  // Identity
+  createIdentityClaim,
+  verifyIdentityClaim,
+  IdentityRegistry,
+
+  // Safe I/O
+  safeWriteFile,
+  safeWriteJson,
+  safeReadFile,
+  validatePath,
+} from "@sanna/core";
+```
+
+Type imports for advanced usage:
+
+```typescript
+import type {
+  Constitution,
+  Receipt,
+  CheckResult,
+  AuthorityDecision,
+  SannaResult,
+  SannaObserveOptions,
+  ReceiptQueryFilters,
+  DriftReport,
+  EnforcementMode,
+  InvariantDefinition,
+} from "@sanna/core";
+```
+
+## Verification
+
+Verification proves four properties:
+
+- **Schema validation:** Receipt structure matches the expected format.
+- **Hash verification:** Content hashes match the actual inputs and outputs (tamper detection).
+- **Signature verification:** Receipt was signed by a known key (authenticity).
+- **Chain verification:** Constitution was signed, and any approvals are cryptographically bound.
+
+```bash
+# Verify receipt integrity
+sanna verify receipt.json
+
+# Verify with signature check
+sanna verify receipt.json --public-key <key-id>.pub
+
+# Verify constitution signature
+sanna verify-constitution constitution.yaml --public-key <key-id>.pub
+```
+
+Programmatic verification:
+
+```typescript
+import { verifyReceipt, loadPublicKey } from "@sanna/core";
+import { readFileSync } from "node:fs";
+
+const receipt = JSON.parse(readFileSync("receipt.json", "utf-8"));
+const publicKey = loadPublicKey("~/.sanna/keys/<key-id>.pub");
+
+const result = verifyReceipt(receipt, publicKey);
+console.log(result.valid);            // true or false
+console.log(result.checks_performed); // list of verification steps
+```
+
+Evidence bundles package a receipt, its constitution, and public keys into a self-contained zip for auditors:
+
+```typescript
+import { createBundle, verifyBundle } from "@sanna/core";
+
+// Create bundle
+await createBundle({
+  receiptPath: "receipt.json",
+  constitutionPath: "constitution.yaml",
+  publicKeyPath: "~/.sanna/keys/<key-id>.pub",
+  outputPath: "evidence.zip",
+});
+
+// Verify bundle (7-step verification)
+const result = verifyBundle("evidence.zip");
+console.log(result.passed);  // true if all 7 checks pass
+```
+
+No network. No API keys. No vendor dependency.
+
+## Enterprise Features
+
+- **DMARC-style adoption**: Start with `permissive` enforcement (observe), move to `advisory` (warn), then `enforced` (halt).
+- **Ed25519 cryptographic signatures**: Constitutions, receipts, and approval records are independently signed and verifiable.
+- **Offline verification**: No platform dependency. Verify receipts with a public key and the CLI.
+- **Evidence bundles**: Self-contained zip archives with receipt, constitution, and public keys for auditors.
+- **Drift analytics**: Per-agent failure-rate trending with linear regression and breach projection.
+- **Receipt Triad**: Cryptographic binding of input, reasoning, and action for auditability.
+- **Receipt queries**: SQLite-backed receipt persistence with filtered queries via `ReceiptStore`.
+- **Key management**: SHA-256 key fingerprints, labeled keypairs, PKCS#8/SPKI PEM format.
+- **Multi-party approval**: Quorum-based constitution approval workflows with expiration and cryptographic binding.
+- **MCP governance tools**: 7 governance tools available via MCP stdio for integration with Claude Desktop, Claude Code, and Cursor.
+
+## Security
+
+- **Ed25519 cryptographic signatures**: Constitutions, receipts, and approval records are independently signed and verifiable offline.
+- **Atomic file writes**: All file operations use symlink-protected atomic writes (temp file + `fsync` + rename).
+- **SQLite hardening**: Receipt stores validate file ownership, enforce `0o600` permissions, and reject symlinks.
+- **Safe regex execution**: User-supplied regex patterns are validated by [safe-regex2](https://github.com/fastify/safe-regex2) before execution. Catastrophic backtracking patterns are rejected.
+- **PII redaction**: Credit card detection uses a two-pass approach (strip separators, match digit runs) to avoid ReDoS. Object redaction enforces a recursion depth limit (default 20) to prevent stack overflow.
+- **Escalation token hashing**: Only SHA-256 hashes of HMAC tokens are stored at rest. Raw tokens are returned to the caller but never persisted.
+- **Config secret isolation**: Gateway config supports `$ENV{VAR_NAME}` interpolation for HMAC secrets and key paths. File permission warnings on group/world-readable config files.
+- **Path validation**: File I/O validates against symlink attacks, path traversal, and excessively large files.
+
+## Cryptographic Design
+
+- **Signing**: Ed25519 over canonical JSON (RFC 8785-style deterministic serialization)
+- **Hashing**: SHA-256 for all content hashes, fingerprints, and key IDs
+- **Canonicalization**: Sorted keys, NFC Unicode normalization, integer-only numerics (no floats in signed content)
+- **Fingerprinting**: Pipe-delimited fields hashed with SHA-256; 16-hex truncation for display, 64-hex for full fingerprint
+
+See the [Sanna Protocol specification](https://github.com/sanna-ai/sanna-protocol) for full cryptographic construction details.
+
+## Threat Model
+
+**Defends against:**
+- Tampering with stored receipts (detected via fingerprint and signature verification)
+- Unverifiable governance claims (receipts are cryptographically signed attestations)
+- Substitution of receipts across contexts (receipts are cryptographically bound to specific inputs, outputs, and correlation IDs; verifiers should enforce timestamp and correlation expectations)
+- Unauthorized tool execution (constitution enforcement blocks or escalates disallowed actions)
+
+**Does not defend against:**
+- Compromised runtime environment (if the host is compromised, all bets are off)
+- Stolen signing keys (key compromise requires re-keying and re-signing)
+- Bypassing Sanna entirely (governance only applies to functions wrapped with `sannaObserve` or tool calls routed through the gateway)
+- Malicious constitutions (Sanna enforces the constitution as written; it does not validate whether the constitution itself is correct or sufficient)
+
+## Limitations
+
+Receipts are attestations of process, not guarantees of outcome.
+
+- Receipts do not prove internal reasoning was truthful — they prove that checks were run against the output
+- Receipts do not prove upstream input was complete or accurate
+- Receipts do not protect against a compromised host or stolen signing keys
+- Receipts do not prove the constitution itself was correct or sufficient for the use case
+- Heuristic checks (C1-C5) are deterministic but not exhaustive — they catch common failure modes, not all possible failures
+
+## Cross-Language Compatibility
+
+Receipts generated by the TypeScript SDK verify in the [Python SDK](https://github.com/sanna-ai/sanna), and vice versa. Key pairs are interchangeable — both SDKs use PKCS#8 (private) and SPKI (public) PEM encoding for Ed25519 keys.
+
+Cross-language parity is verified against golden fixtures in the [sanna-protocol](https://github.com/sanna-ai/sanna-protocol) repository. The test suite includes 48 cross-language verification tests covering receipt fingerprinting, content hashing, canonicalization, and signature verification.
+
+```typescript
+// Keys generated by the Python SDK work in TypeScript
+import { loadPublicKey, verifyReceipt } from "@sanna/core";
+
+const pythonKey = loadPublicKey("python-generated-key.pub");
+const pythonReceipt = JSON.parse(readFileSync("python-receipt.json", "utf-8"));
+const result = verifyReceipt(pythonReceipt, pythonKey);
+// result.valid === true
+```
+
+## Install
+
+```bash
+npm install @sanna/core           # Core library
+npm install @sanna/cli            # CLI tools (includes core)
+npm install @sanna/mcp-server     # MCP governance server
+npm install @sanna/gateway        # MCP enforcement proxy
+```
+
+Requires **Node.js 22+** for native Ed25519 support (zero external crypto dependencies).
+
+## Development
+
+```bash
+git clone https://github.com/sanna-ai/sanna-ts.git
+cd sanna-ts
+git submodule update --init        # Pull sanna-protocol spec fixtures
+npm install                        # Workspaces auto-linked
+npm run build                      # Build all 4 packages
+npm test                           # 555 tests across 29 test files
+```
+
+The `spec/` git submodule points to [sanna-ai/sanna-protocol](https://github.com/sanna-ai/sanna-protocol) and provides golden fixtures, JSON schemas, and the protocol specification used by the cross-language test suite.
 
 ## License
 
-[AGPL-3.0](LICENSE)
+AGPL-3.0. The [protocol specification](https://github.com/sanna-ai/sanna-protocol) is licensed under Apache 2.0.
