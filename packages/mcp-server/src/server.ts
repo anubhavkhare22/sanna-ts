@@ -36,12 +36,12 @@ import {
   runCoherenceChecks,
   runAllInvariantChecks,
   SPEC_VERSION,
-} from "@sanna/core";
+} from "@sanna-ai/core";
 
 import type {
   Constitution,
   CheckResult,
-} from "@sanna/core";
+} from "@sanna-ai/core";
 
 // ── Size guards ─────────────────────────────────────────────────────
 

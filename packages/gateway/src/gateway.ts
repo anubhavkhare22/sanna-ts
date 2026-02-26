@@ -23,13 +23,13 @@ import {
   loadPrivateKey,
   loadPublicKey,
   ReceiptStore,
-} from "@sanna/core";
+} from "@sanna-ai/core";
 import type {
   Constitution,
   Receipt,
   AuthorityDecision,
   CheckResult,
-} from "@sanna/core";
+} from "@sanna-ai/core";
 
 import type { GatewayConfig, DownstreamConfig } from "./config.js";
 import { resolveToolPolicy } from "./config.js";

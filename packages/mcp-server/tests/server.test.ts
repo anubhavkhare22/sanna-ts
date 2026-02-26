@@ -15,7 +15,7 @@ import {
   signReceipt,
   loadPrivateKey,
   ReceiptStore,
-} from "@sanna/core";
+} from "@sanna-ai/core";
 
 // ── Helpers ─────────────────────────────────────────────────────────
 

@@ -6,7 +6,7 @@ import {
   generateKeypair,
   exportPrivateKeyPem,
   exportPublicKeyPem,
-} from "@sanna/core";
+} from "@sanna-ai/core";
 
 export async function runKeygen(options: {
   outputDir?: string;

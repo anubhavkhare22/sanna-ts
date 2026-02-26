@@ -5,7 +5,7 @@ import {
   computeActionHash,
   buildReceiptTriad,
 } from "../src/receipt-v2.js";
-import type { AuthorityDecision, CheckResult } from "@sanna/core";
+import type { AuthorityDecision, CheckResult } from "@sanna-ai/core";
 
 describe("computeInputHash", () => {
   it("should produce a deterministic hash", () => {

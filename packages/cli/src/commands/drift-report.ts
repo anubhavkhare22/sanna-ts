@@ -5,7 +5,7 @@ import {
   DriftAnalyzer,
   formatDriftReport,
   exportDriftReport,
-} from "@sanna/core";
+} from "@sanna-ai/core";
 
 export async function runDriftReport(options: {
   db: string;

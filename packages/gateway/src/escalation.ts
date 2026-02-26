@@ -11,7 +11,7 @@
 
 import { randomUUID, createHmac, createHash, timingSafeEqual } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
-import { safeWriteJson } from "@sanna/core";
+import { safeWriteJson } from "@sanna-ai/core";
 
 // ── Types ────────────────────────────────────────────────────────────
 

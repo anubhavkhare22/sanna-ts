@@ -7,8 +7,8 @@
  * - action_hash:    hash of the action taken (result + flags)
  */
 
-import { hashObj, hashContent } from "@sanna/core";
-import type { AuthorityDecision, CheckResult } from "@sanna/core";
+import { hashObj, hashContent } from "@sanna-ai/core";
+import type { AuthorityDecision, CheckResult } from "@sanna-ai/core";
 
 // ── Types ────────────────────────────────────────────────────────────
 

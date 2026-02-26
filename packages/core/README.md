@@ -1,4 +1,4 @@
-# @sanna/core
+# @sanna-ai/core
 
 TypeScript SDK for the [Sanna protocol](https://github.com/sanna-ai/sanna-protocol) — an open AI governance framework that enforces constitutional boundaries on AI agents through cryptographic receipts. Constitutions define what an agent can and cannot do; receipts provide tamper-evident proof that every action was evaluated against those rules.
 
@@ -7,7 +7,7 @@ Implements **Sanna Protocol v1.0**.
 ## Install
 
 ```bash
-npm install @sanna/core
+npm install @sanna-ai/core
 ```
 
 Requires Node.js 22+ (native Ed25519 support).
@@ -24,7 +24,7 @@ import {
   generateReceipt,
   signReceipt,
   verifyReceipt,
-} from "@sanna/core";
+} from "@sanna-ai/core";
 
 // 1. Load and verify a constitution
 const constitution = loadConstitution("constitution.yaml");

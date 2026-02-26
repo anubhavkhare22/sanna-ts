@@ -1,5 +1,5 @@
 {
-  "name": "@sanna/gateway",
+  "name": "@sanna-ai/gateway",
   "version": "0.1.0",
   "description": "MCP enforcement proxy for the Sanna protocol",
   "license": "AGPL-3.0-only",
@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
-    "@sanna/core": "*",
+    "@sanna-ai/core": "*",
     "js-yaml": "^4.1.0",
     "tree-kill": "^1.2.2"
   }

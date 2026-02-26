@@ -1,4 +1,4 @@
-// @sanna/core — Sanna protocol SDK
+// @sanna-ai/core — Sanna protocol SDK
 
 export {
   EMPTY_HASH,

@@ -28,7 +28,7 @@ async function loadConfigFile(): Promise<Partial<SannaMCPConfig>> {
     }
   }
 
-  // Try YAML config (only if js-yaml available through @sanna/core's dep)
+  // Try YAML config (only if js-yaml available through @sanna-ai/core's dep)
   const yamlPath = resolve("sanna-mcp.yaml");
   if (existsSync(yamlPath)) {
     try {

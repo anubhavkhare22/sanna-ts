@@ -14,8 +14,8 @@ import {
   generateReceipt,
   signReceipt,
   verifyReceipt,
-} from "@sanna/core";
-import type { Constitution, CheckResult } from "@sanna/core";
+} from "@sanna-ai/core";
+import type { Constitution, CheckResult } from "@sanna-ai/core";
 
 function makeConstitution(): Constitution {
   return {
@@ -376,7 +376,7 @@ describe("CLI Commands (unit tests via imports)", () => {
 
     it("should generate a drift report from a populated store", async () => {
       const { runDriftReport } = await import("../src/commands/drift-report.js");
-      const { ReceiptStore } = await import("@sanna/core");
+      const { ReceiptStore } = await import("@sanna-ai/core");
 
       process.env.SANNA_ALLOW_TEMP_DB = "1";
       const dbPath = join(tmpDir, "drift.db");

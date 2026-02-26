@@ -6,8 +6,8 @@ import {
   signReceipt,
   verifyReceipt,
   verifyConstitutionSignature,
-} from "@sanna/core";
-import type { Constitution, CheckResult } from "@sanna/core";
+} from "@sanna-ai/core";
+import type { Constitution, CheckResult } from "@sanna-ai/core";
 
 export async function runDemo(): Promise<void> {
   console.log("=== Sanna Demo ===");

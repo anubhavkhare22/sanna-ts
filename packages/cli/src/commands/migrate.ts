@@ -5,7 +5,7 @@ export async function runMigrate(
   options: { config?: string; output?: string },
 ): Promise<void> {
   const { migrateClaudeConfig, migrateCursorConfig } = await import(
-    "@sanna/gateway"
+    "@sanna-ai/gateway"
   );
 
   const outputPath = options.output ?? "gateway.yaml";

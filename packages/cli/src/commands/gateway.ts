@@ -10,7 +10,7 @@ export async function runGateway(configPath: string): Promise<void> {
     return;
   }
 
-  const { loadGatewayConfig, SannaGateway } = await import("@sanna/gateway");
+  const { loadGatewayConfig, SannaGateway } = await import("@sanna-ai/gateway");
   const { StdioServerTransport } = await import(
     "@modelcontextprotocol/sdk/server/stdio.js"
   );

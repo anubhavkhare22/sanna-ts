@@ -9,7 +9,7 @@ import {
   generateKeypair,
   exportPrivateKeyPem,
   exportPublicKeyPem,
-} from "@sanna/core";
+} from "@sanna-ai/core";
 
 import { SannaGateway } from "../src/gateway.js";
 import type { GatewayConfig } from "../src/config.js";

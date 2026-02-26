@@ -5,7 +5,7 @@ import {
   saveConstitution,
   loadPrivateKey,
   getKeyId,
-} from "@sanna/core";
+} from "@sanna-ai/core";
 
 export async function runSign(
   file: string,

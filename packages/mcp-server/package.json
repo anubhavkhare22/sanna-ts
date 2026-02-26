@@ -1,5 +1,5 @@
 {
-  "name": "@sanna/mcp-server",
+  "name": "@sanna-ai/mcp-server",
   "version": "0.1.0",
   "description": "MCP server for the Sanna protocol",
   "license": "AGPL-3.0-only",
@@ -27,6 +27,6 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
-    "@sanna/core": "*"
+    "@sanna-ai/core": "*"
   }
 }

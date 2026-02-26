@@ -8,5 +8,5 @@ export default defineConfig({
   banner: {
     js: "#!/usr/bin/env node",
   },
-  external: ["@sanna/core", "better-sqlite3"],
+  external: ["@sanna-ai/core", "better-sqlite3"],
 });

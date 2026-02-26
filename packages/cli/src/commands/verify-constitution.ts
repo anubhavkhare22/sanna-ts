@@ -4,7 +4,7 @@ import {
   verifyConstitutionSignature,
   computeFileContentHash,
   loadPublicKey,
-} from "@sanna/core";
+} from "@sanna-ai/core";
 
 export async function runVerifyConstitution(
   file: string,

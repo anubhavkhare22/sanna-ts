@@ -50,7 +50,7 @@ export async function runCheckConfig(file: string): Promise<void> {
       if (existsSync(resolvedConst)) {
         console.log(`  [PASS] Constitution file exists: ${resolvedConst}`);
         try {
-          const { loadConstitution } = await import("@sanna/core");
+          const { loadConstitution } = await import("@sanna-ai/core");
           const c = loadConstitution(resolvedConst);
           if (c.policy_hash) {
             const sig = c.provenance.signature;

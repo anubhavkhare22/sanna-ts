@@ -9,7 +9,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { homedir } from "node:os";
 import yaml from "js-yaml";
-import { safeWriteFile } from "@sanna/core";
+import { safeWriteFile } from "@sanna-ai/core";
 
 import type { GatewayConfig, DownstreamConfig } from "./config.js";
 

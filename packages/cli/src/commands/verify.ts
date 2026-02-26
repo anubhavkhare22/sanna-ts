@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { readFileSync } from "node:fs";
-import { verifyReceipt, loadPublicKey } from "@sanna/core";
+import { verifyReceipt, loadPublicKey } from "@sanna-ai/core";
 
 export async function runVerify(
   file: string,
