@@ -366,12 +366,13 @@ sanna drift-report --db .sanna/receipts.db --window 30 --json
 
 ### Gateway Constitution Templates
 
-Five ready-to-use constitution templates for gateway deployments live in [`examples/constitutions/`](examples/constitutions/). Each includes evaluation order documentation explaining how `cannot_execute`, `must_escalate`, and `can_execute` interact.
+Six ready-to-use constitution templates for gateway deployments live in [`examples/constitutions/`](examples/constitutions/). Each includes evaluation order documentation explaining how `cannot_execute`, `must_escalate`, and `can_execute` interact.
 
 | Template | Agent | Use Case |
 |----------|-------|----------|
-| [`openclaw-personal`](examples/constitutions/openclaw-personal.yaml) | personal-agent | Individuals running autonomous agents on their own machine |
-| [`openclaw-developer`](examples/constitutions/openclaw-developer.yaml) | skill-builder-agent | Strict containment for skill marketplace distribution |
+| [`openclaw-developer`](examples/constitutions/openclaw-developer.yaml) | openclaw-developer | Development agent with full workspace access, escalation for dangerous patterns |
+| [`openclaw-personal`](examples/constitutions/openclaw-personal.yaml) | openclaw-personal | Personal productivity agent with broad file and execution access |
+| [`openclaw-team`](examples/constitutions/openclaw-team.yaml) | openclaw-team | Shared team agent with strict governance, file modifications require escalation |
 | [`cowork-personal`](examples/constitutions/cowork-personal.yaml) | knowledge-worker-agent | Knowledge workers using Cowork / Claude Desktop with MCP servers |
 | [`cowork-team`](examples/constitutions/cowork-team.yaml) | team-workspace-agent | Small teams sharing governance via Git with per-developer sidecars |
 | [`claude-code-standard`](examples/constitutions/claude-code-standard.yaml) | claude-code-agent | Developers using Claude Code with MCP connectors |
@@ -400,8 +401,8 @@ All commands are available as `sanna <command>`:
 | Package | Description |
 |---------|-------------|
 | [`@sanna-ai/core`](packages/core/) | Constitution engine, Ed25519 crypto, receipts, coherence checks, middleware, receipt store, drift analysis, evidence bundles, approval workflows, identity claims |
-| [`@sanna-ai/cli`](packages/cli/) | Command-line tools (12 commands) |
-| [`@sanna-ai/mcp-server`](packages/mcp-server/) | 7 governance tools over MCP stdio transport |
+| [`@sanna-ai/cli`](packages/cli/) | Command-line tools (16 commands) |
+| [`@sanna-ai/mcp-server`](packages/mcp-server/) | 10 governance tools over MCP stdio transport |
 | [`@sanna-ai/gateway`](packages/gateway/) | MCP enforcement proxy with circuit breakers, escalation, PII redaction, config migration |
 
 ## API Reference
@@ -552,7 +553,7 @@ No network. No API keys. No vendor dependency.
 - **Receipt queries**: SQLite-backed receipt persistence with filtered queries via `ReceiptStore`.
 - **Key management**: SHA-256 key fingerprints, labeled keypairs, PKCS#8/SPKI PEM format.
 - **Multi-party approval**: Quorum-based constitution approval workflows with expiration and cryptographic binding.
-- **MCP governance tools**: 7 governance tools available via MCP stdio for integration with Claude Desktop, Claude Code, and Cursor.
+- **MCP governance tools**: 10 governance tools available via MCP stdio for integration with Claude Desktop, Claude Code, and Cursor.
 
 ## Security
 
@@ -633,7 +634,7 @@ cd sanna-ts
 git submodule update --init        # Pull sanna-protocol spec fixtures
 npm install                        # Workspaces auto-linked
 npm run build                      # Build all 4 packages
-npm test                           # 573 tests across 31 test files
+npm test                           # 653 tests across 37 test files
 ```
 
 The `spec/` git submodule points to [sanna-ai/sanna-protocol](https://github.com/sanna-ai/sanna-protocol) and provides golden fixtures, JSON schemas, and the protocol specification used by the cross-language test suite.
